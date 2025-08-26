@@ -1,22 +1,41 @@
 from llama_cpp import Llama
+import os
 
-# Load the model once
-llm = Llama(model_path="models/qwen2.5-0.5b-instruct/qwen2.5-0.5b-instruct-q4_0.gguf", verbose=False)
+llm = Llama(
+    model_path="models/qwen2.5-0.5b-instruct/qwen2.5-0.5b-instruct-q4_0.gguf",
+    n_ctx=32768,
+    verbose=False
+)
+SYS = (
+  "If you are not certain, respond exactly with: NO_ANSWER\n"
+  "If certain, respond with: ANSWER: <concise fact>\n"
+  "Do not add anything else."
+)
 
 def call_llm_direct(question: str) -> str:
-    """Send the question straight to the LLM (no RAG)."""
-    resp = llm(
-        question,
-        max_tokens=256,
-        stop=["</s>"],  # optional, depends on the model
+    print('in the model')
+    resp = llm.create_chat_completion(
+        messages=[
+            {"role": "system", "content": SYS},
+            {"role": "user", "content": question}
+        ],
+        max_tokens=120,
+        temperature=0.2,
+        top_p=0.9,
+        repeat_penalty=1.15,
+        stop=["</s>"]
     )
-    print(resp)
-    return
-    return resp["choices"][0]["text"].strip()
+
+    #return resp["choices"][0]["text"].strip()
+    text = resp["choices"][0]["message"]["content"].strip()
+    print('Text', resp)
+
+    if text.startswith("NO_ANSWER"):
+        return 'No Answer Provided'
+    return text
 # resp object {'id': 'cmpl-2b9e228e-d4db-4193-82bd-c42974ed1599', 'object': 'text_completion', 'created': 1755685239, 'model': 'models/qwen2.5-0.5b-instruct/qwen2.5-0.5b-instruct-q4_0.gguf', 'choices': [{'text': ', and what are its benefits? Ibuprofen is a nonsteroidal anti-inflammatory drug (NSAID) that is used to treat pain, inflammation, and fever. It is also used to relieve pain and reduce swelling in the eyes. Ibuprofen is commonly used to relieve pain and reduce swelling in the eyes, such as when eye irritation is present. It is also used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain and reduce swelling in the knee. Ibuprofen is commonly used to relieve pain', 'index': 0, 'logprobs': None, 'finish_reason': 'length'}], 'usage': {'prompt_tokens': 5, 'completion_tokens': 256, 'total_tokens': 261}}
 
 def main():
-    # print("🧠 Direct LLM mode (no RAG). Ask a question, or Ctrl+C to exit.")
     try:
         while True:
             q = input("\nQuestion: ").strip()
