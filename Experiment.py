@@ -1,19 +1,22 @@
 from Dataset import Dataset
 from phoenix.experiments import run_experiment
+from difflib import SequenceMatcher
 
 class Experiment:
-    def __init__(self, dataset_name, question, prediction):
+    def __init__(self, dataset_name, question, answer, prediction):
         self.dataset_name = dataset_name
         self.question = question
+        self.answer = answer
         self.prediction = prediction
 
-        self.ds = Dataset(dataset_name, question, prediction)
+        self.ds = Dataset(dataset_name, question, answer)
 
     def run(self):
         dataset = self.ds.save()
 
         def task(input):
             q = (input.get("question") or "").strip().lower()
+            print("Question", q)
             if q == self.question.strip().lower():
                 return {"prediction": self.prediction}
             return {"prediction": "UNKNOWN"}
@@ -23,6 +26,14 @@ class Experiment:
             print("🔍 Output:", output)
             return 1.0 if output.get("prediction") == expected.get("answer") else 0.0
 
+        def semantic_match(output, expected):
+            """
+            Returns similarity between 0 and 1 based on text similarity.
+            """
+            _pred = output["prediction"]
+            _exp = expected["answer"]
+            score = SequenceMatcher(None, _pred, _exp).ratio()
+            return score
 
         experiment = run_experiment(
             dataset=dataset,
