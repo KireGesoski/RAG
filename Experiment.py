@@ -3,23 +3,32 @@ from phoenix.experiments import run_experiment
 from difflib import SequenceMatcher
 
 class Experiment:
-    def __init__(self, dataset_name, question, answer, prediction):
+    def __init__(self, dataset_name, questions, answers, predictions):
         self.dataset_name = dataset_name
-        self.question = question
-        self.answer = answer
-        self.prediction = prediction
+        self.questions = questions
+        self.answers = answers
+        self.predictions = predictions
 
-        self.ds = Dataset(dataset_name, question, answer)
+        self.ds = Dataset(dataset_name, questions, answers)
 
     def run(self):
         dataset = self.ds.save()
 
+        # def task(input):
+        #     q = (input.get("question") or "").strip().lower()
+        #     print("Question", q)
+        #     if q == self.question.strip().lower():
+        #         return {"prediction": self.prediction}
+        #     return {"prediction": "UNKNOWN"}
+
         def task(input):
             q = (input.get("question") or "").strip().lower()
-            print("Question", q)
-            if q == self.question.strip().lower():
-                return {"prediction": self.prediction}
-            return {"prediction": "UNKNOWN"}
+            # Find index of matching question
+            try:
+                idx = [question.lower() for question in self.questions].index(q)
+                return {"prediction": self.predictions[idx]}
+            except ValueError:
+                return {"prediction": "UNKNOWN"}
 
         def exact_match(output, expected):
             print("🔍 Expected:", expected)

@@ -1,33 +1,44 @@
 import os
 import pandas as pd
 from phoenix.session.client import Client
+from typing import List, Dict, Optional
 
 class Dataset:
-    def __init__(self, dataset_name: str, question: str, answer: str, endpoint: str | None = None):
+    def __init__(
+        self,
+        dataset_name: str,
+        questions: List[str],
+        answers: List[str],
+        endpoint: Optional[str] = None
+    ):
         """
-        Create a dataset helper tied to a Phoenix server.
+        Phoenix dataset helper for multiple questions/answers.
 
         Args:
             dataset_name: Name of the Phoenix dataset.
-            question: First input row's question.
-            prediction: First input row's prediction.
-            endpoint: Phoenix base URL (defaults to $PHOENIX_ENDPOINT or http://localhost:6006).
+            questions: List of questions (must match length of answers).
+            answers: List of expected answers (must match length of questions).
+            endpoint: Phoenix base URL (defaults to $PHOENIX_ENDPOINT or http://localhost:6006)
         """
+        if len(questions) != len(answers):
+            raise ValueError("Length of questions and answers must match")
+
         self.dataset_name = dataset_name
-        self.rows = [{"question": question, "answer": answer}]
+        self.rows: List[Dict[str, str]] = [{"question": q, "answer": a} for q, a in zip(questions, answers)]
         self.endpoint = endpoint or os.getenv("PHOENIX_ENDPOINT", "http://localhost:6006")
         self._client = Client(endpoint=self.endpoint)
 
-    # def add(self, question: str, prediction: str) -> None:
-    #     """Queue another row to upload/append."""
-    #     self.rows.append({"question": question, "prediction": prediction})
+    def add(self, question: str, answer: str) -> None:
+        """Add a new question/answer pair to the dataset."""
+        self.rows.append({"question": question, "answer": answer})
 
     def _to_dataframe(self) -> pd.DataFrame:
+        """Convert internal rows to a pandas DataFrame."""
         return pd.DataFrame(self.rows, columns=["question", "answer"])
 
     def save(self):
         """
-        Uploads a new dataset if it doesn't exist, otherwise appends.
+        Uploads a new dataset if it doesn't exist, otherwise appends rows.
         Prints the Phoenix UI URL at the end.
         """
         df = self._to_dataframe()

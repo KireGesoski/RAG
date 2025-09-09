@@ -112,7 +112,11 @@ def call_llm_direct(question: str) -> str:
 
                 validated_text = guard.validate(text)
                 answer = "ANSWER: 4"
-                experiment = Experiment('exp_demo_clean_', question, answer, validated_text.raw_llm_output)
+                questions_list = ["2+2", "3+3", "4+4"]
+                answers_list = ["4", "6", "8"]
+                predictions_list = ["4", "6", "7"]
+                #experiment = Experiment('exp_demo_clean_', [question], [answer], [validated_text.raw_llm_output])
+                experiment = Experiment('exp_demo_clean_8', questions_list, answers_list, predictions_list)
                 experiment.run()
                 return validated_text
 
