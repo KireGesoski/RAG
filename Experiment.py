@@ -1,6 +1,7 @@
 from Dataset import Dataset
 from phoenix.experiments import run_experiment
 from difflib import SequenceMatcher
+from LLMJudge import LLMJudgeModel
 
 class Experiment:
     def __init__(self, dataset_name, questions, answers, predictions):
@@ -31,8 +32,8 @@ class Experiment:
                 return {"prediction": "UNKNOWN"}
 
         def exact_match(output, expected):
-            print("🔍 Expected:", expected)
-            print("🔍 Output:", output)
+            # print("🔍 Expected:", expected)
+            # print("🔍 Output:", output)
             return 1.0 if output.get("prediction") == expected.get("answer") else 0.0
 
         def semantic_match(output, expected):
@@ -44,10 +45,19 @@ class Experiment:
             score = SequenceMatcher(None, _pred, _exp).ratio()
             return score
 
+        def llm_judge_match(outputs, questions):
+            llm_judge = LLMJudgeModel()
+            scores = []
+            for output, question in zip(outputs, questions):
+                judge_answer = llm_judge.get_answer(question)
+                score = llm_judge.semantic_match(output["prediction"], judge_answer, binary=False)
+                scores.append(score)
+            return scores
+
         experiment = run_experiment(
             dataset=dataset,
             task=task,
-            evaluators=[exact_match],
+            evaluators=[semantic_match, llm_judge_match],
             experiment_name="initial-experiment",
             print_summary=True,
         )

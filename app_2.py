@@ -10,6 +10,7 @@ from openinference.semconv.trace import (
 )
 from Experiment import Experiment
 from phoenix.session.client import Client
+from spellchecker import SpellChecker
 
 # 1) Connect to your local Phoenix (base URL, no /v1 suffix)
 ph = Client(endpoint="http://localhost:6006")  # <- local Phoenix UI/API
@@ -37,16 +38,37 @@ llm = Llama(
     verbose=False
 )
 
-SYS = """You must respond in EXACTLY one of these two formats, on a single line:
+# SYS = """You must respond in EXACTLY one of these two formats, on a single line:
+#
+# 1. If you are uncertain: NO_ANSWER
+# 2. If you are certain: ANSWER: <concise fact>
+#
+# Rules:
+# - Always start with "ANSWER:" if you are certain.
+# - No extra words before or after.
+# - No markdown, no newlines, no explanations.
+# - Never omit the "ANSWER:" prefix when certain.
+#
+# Examples:
+# Q: What is the capital of France?
+# A: ANSWER: Paris
+#
+# Q: What is the phone number of the Prime Minister?
+# A: NO_ANSWER
+# """
+SYS = """You must always respond with EXACTLY one of these two formats, on a single line only:
 
-1. If you are uncertain: NO_ANSWER
-2. If you are certain: ANSWER: <concise fact>
+1. If the answer is known with 100% certainty: ANSWER: <single concise fact>
+2. If the answer is not known with 100% certainty: NO_ANSWER
 
 Rules:
-- Always start with "ANSWER:" if you are certain.
-- No extra words before or after.
-- No markdown, no newlines, no explanations.
-- Never omit the "ANSWER:" prefix when certain.
+- Correct obvious spelling errors in the question before answering.
+- If the question contains spelling errors, correct them silently before answering.
+- Never output anything other than one of the two formats.
+- Always use the exact prefix "ANSWER:" when certain.
+- Never add explanations, synonyms, or extra words.
+- Never include markdown, newlines, punctuation, or commentary outside the allowed format.
+- Responses must always be deterministic and repeatable.
 
 Examples:
 Q: What is the capital of France?
@@ -55,6 +77,7 @@ A: ANSWER: Paris
 Q: What is the phone number of the Prime Minister?
 A: NO_ANSWER
 """
+
 dataset_records = []
 def normalize_output(text: str) -> str:
     s = text.strip()
@@ -91,8 +114,9 @@ def call_llm_direct(question: str) -> str:
                         {"role": "user", "content": question},
                     ],
                     max_tokens=120,
-                    temperature=0,
+                    temperature=0.9,
                     top_p=0.5,
+                    seed=123,
                     repeat_penalty=1.15,
                     stop=["</s>"]
                 )
@@ -111,12 +135,13 @@ def call_llm_direct(question: str) -> str:
                 chain_span.set_attribute(OI.OUTPUT_VALUE, text)
 
                 validated_text = guard.validate(text)
-                answer = "ANSWER: 4"
-                questions_list = ["2+2", "3+3", "4+4"]
-                answers_list = ["4", "6", "8"]
-                predictions_list = ["4", "6", "7"]
-                #experiment = Experiment('exp_demo_clean_', [question], [answer], [validated_text.raw_llm_output])
-                experiment = Experiment('exp_demo_clean_8', questions_list, answers_list, predictions_list)
+                answer = "ANSWER: Ibuprofen is a non-steroidal anti-inflammatory drug (NSAID) used to relieve pain and reduce inflammation. It can be taken orally or in topical form, depending on the condition being treated. Common uses include treating mild to moderate arthritis, sports injuries, and headaches. The active ingredient is ibuprofene itself."
+                #answer = "I am a computer program."
+                # questions_list = ["2+2", "3+3", "4+4"]
+                # answers_list = ["4", "6", "8"]
+                # predictions_list = ["4", "6", "7"]
+                experiment = Experiment('exp_demo_clean_14', [question], [answer], [validated_text.raw_llm_output])
+                #experiment = Experiment('exp_demo_clean_8', questions_list, answers_list, predictions_list)
                 experiment.run()
                 return validated_text
 
@@ -124,6 +149,13 @@ def call_llm_direct(question: str) -> str:
                 llm_span.record_exception(e)
                 chain_span.set_attribute("llm.error", str(e))
                 return "NO_ANSWER"
+
+spell = SpellChecker()
+
+def normalize_input_general(question: str) -> str:
+    words = question.split()
+    corrected = [spell.correction(w) or w for w in words]
+    return " ".join(corrected)
 
 def main():
     # try:
@@ -140,11 +172,10 @@ def main():
     num = 0
     try:
         while num < 1:
-            q = "2+2"
-            if not q:
-                continue
+            q = "What is Ibooprofen"
+            q = normalize_input_general(q)
+            print("\nQuestion: ", q)
             answer = call_llm_direct(q)
-            print(answer)
             num += 1
     except KeyboardInterrupt:
         print("\nBye!")
