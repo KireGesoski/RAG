@@ -2,7 +2,7 @@ from openai import OpenAI
 from conf_file import openAi_key
 
 class LLMJudgeModel:
-    def __init__(self, api_key=openAi_key, model_name="gpt-4o-mini", judge_model_name="gpt-4o-mini"):
+    def __init__(self, api_key=openAi_key, model_name="gpt-4", judge_model_name="gpt-4"):
         """
         Initializes the OpenAI client and sets model names.
         """

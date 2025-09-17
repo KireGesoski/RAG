@@ -45,14 +45,27 @@ class Experiment:
             score = SequenceMatcher(None, _pred, _exp).ratio()
             return score
 
-        def llm_judge_match(outputs, questions):
+        # def llm_judge_match(outputs):
+        #     print('OUTPUTS:', outputs)
+        #     print('QUESTIONS:', self.questions)
+        #     llm_judge = LLMJudgeModel()
+        #     scores = []
+        #     for output, question in zip(outputs, self.questions):
+        #         judge_answer = llm_judge.get_answer(question)
+        #         print('Prediction', output["prediction"])
+        #         print('Judge Answer', judge_answer)
+        #         score = llm_judge.semantic_match(output["prediction"], judge_answer, binary=False)
+        #         scores.append(score)
+        #     return scores
+        def llm_judge_match(output):
             llm_judge = LLMJudgeModel()
-            scores = []
-            for output, question in zip(outputs, questions):
-                judge_answer = llm_judge.get_answer(question)
-                score = llm_judge.semantic_match(output["prediction"], judge_answer, binary=False)
-                scores.append(score)
-            return scores
+            judge_answer = llm_judge.get_answer(self.questions[0])
+
+            print("Prediction:", output["prediction"])
+            print("Judge Answer:", judge_answer)
+
+            score = llm_judge.semantic_match(output["prediction"], judge_answer, binary=False)
+            return score
 
         experiment = run_experiment(
             dataset=dataset,
@@ -62,7 +75,7 @@ class Experiment:
             print_summary=True,
         )
 
-        print(f"✅ Ran experiment on: '{self.question}' → Prediction: '{self.prediction}'")
+        print(f"✅ Ran experiment on: '{self.questions}' → Prediction: '{self.predictions}'")
 
     def summary(self):
         print("\n📌 Summary:")
